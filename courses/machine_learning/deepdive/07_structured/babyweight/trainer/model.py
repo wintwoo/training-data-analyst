@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import json
+import os
 import shutil
 import numpy as np
 import tensorflow as tf
@@ -51,7 +53,7 @@ def read_dataset(prefix, mode, batch_size):
             features = dict(zip(CSV_COLUMNS, columns))
             label = features.pop(LABEL_COLUMN)
             return features, label
-        
+
         # Use prefix to create file path
         file_path = 'gs://{}/babyweight/preproc/{}*{}*'.format(BUCKET, prefix, PATTERN)
 
@@ -61,13 +63,13 @@ def read_dataset(prefix, mode, batch_size):
         # Create dataset from file list
         dataset = (tf.data.TextLineDataset(file_list)  # Read text file
                     .map(decode_csv))  # Transform each elem by applying decode_csv fn
-      
+
         if mode == tf.estimator.ModeKeys.TRAIN:
             num_epochs = None # indefinitely
             dataset = dataset.shuffle(buffer_size = 10 * batch_size)
         else:
             num_epochs = 1 # end-of-input after this
- 
+
         dataset = dataset.repeat(num_epochs).batch(batch_size)
         return dataset.make_one_shot_iterator().get_next()
     return _input_fn
@@ -77,7 +79,7 @@ def get_wide_deep():
     # Define column types
     is_male,mother_age,plurality,gestation_weeks = \
         [\
-            tf.feature_column.categorical_column_with_vocabulary_list('is_male', 
+            tf.feature_column.categorical_column_with_vocabulary_list('is_male',
                         ['True', 'False', 'Unknown']),
             tf.feature_column.numeric_column('mother_age'),
             tf.feature_column.categorical_column_with_vocabulary_list('plurality',
@@ -87,21 +89,21 @@ def get_wide_deep():
         ]
 
     # Discretize
-    age_buckets = tf.feature_column.bucketized_column(mother_age, 
+    age_buckets = tf.feature_column.bucketized_column(mother_age,
                         boundaries=np.arange(15,45,1).tolist())
-    gestation_buckets = tf.feature_column.bucketized_column(gestation_weeks, 
+    gestation_buckets = tf.feature_column.bucketized_column(gestation_weeks,
                         boundaries=np.arange(17,47,1).tolist())
-      
+
     # Sparse columns are wide, have a linear relationship with the output
     wide = [is_male,
             plurality,
             age_buckets,
             gestation_buckets]
-    
+
     # Feature cross all the wide columns and embed into a lower dimension
     crossed = tf.feature_column.crossed_column(wide, hash_bucket_size=20000)
     embed = tf.feature_column.embedding_column(crossed, NEMBEDS)
-    
+
     # Continuous columns are deep, have a complex relationship with the output
     deep = [mother_age,
             gestation_weeks,
@@ -150,6 +152,14 @@ def forward_key_to_export(estimator):
 
 # Create estimator to train and evaluate
 def train_and_evaluate(output_dir):
+    # added for hyperparameter tuning trials
+    output_dir = os.path.join(
+        output_dir,
+        json.loads(
+            os.environ.get('TF_CONFIG', '{}')
+        ).get('task', {}).get('trial', '')
+    )
+    ##
     wide, deep = get_wide_deep()
     EVAL_INTERVAL = 300 # seconds
     run_config = tf.estimator.RunConfig(save_checkpoints_secs = EVAL_INTERVAL,
@@ -160,7 +170,7 @@ def train_and_evaluate(output_dir):
         dnn_feature_columns = deep,
         dnn_hidden_units = NNSIZE,
         config = run_config)
-    
+
     estimator = tf.contrib.estimator.add_metrics(estimator, my_rmse)
     estimator = forward_key_to_export(estimator)
 

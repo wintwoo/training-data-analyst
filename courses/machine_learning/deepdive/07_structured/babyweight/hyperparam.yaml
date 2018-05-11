@@ -1,0 +1,22 @@
+trainingInput:
+  scaleTier: STANDARD_1
+  hyperparameters:
+    maxTrials: 40
+    maxParallelTrials: 5
+    enableTrialEarlyStopping: True
+    goal: MINIMIZE
+    hyperparameterMetricTag: rmse
+    params:
+    - parameterName: nembeds
+      type: INTEGER
+      minValue: 3
+      maxValue: 30
+      scaleType: UNIT_LINEAR_SCALE
+    - parameterName: nnsize
+      type: DISCRETE
+      discreteValues:
+      - 4
+      - 16
+      - 32
+      - 64
+      - 128
