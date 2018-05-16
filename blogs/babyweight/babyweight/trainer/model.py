@@ -30,7 +30,7 @@ TRAIN_STEPS = 10000
 CSV_COLUMNS = 'weight_pounds,is_male,mother_age,mother_race,plurality,gestation_weeks,alcohol_use,cigarette_use,key'.split(',')
 LABEL_COLUMN = 'weight_pounds'
 KEY_COLUMN = 'key'
-DEFAULTS = [[0.0], ['null'], [0.0], ['null'], [0.0], ['nokey']]
+DEFAULTS = [[0.0], ['null'], [0.0], ['null'], ['null'], [0.0], ['null'], ['null'], ['nokey']]
 
 def read_dataset(prefix, pattern, batch_size=512):
     # use prefix to create filename
@@ -68,7 +68,7 @@ def read_dataset(prefix, pattern, batch_size=512):
 def get_wide_deep():
     # define column types
     is_male,mother_age,plurality,cigarette_use,alcohol_use,mother_race,gestation_weeks = \
-        [\
+        [
             tf.feature_column.categorical_column_with_vocabulary_list('is_male',
                         ['True', 'False', 'Unknown']),
             tf.feature_column.numeric_column('mother_age'),

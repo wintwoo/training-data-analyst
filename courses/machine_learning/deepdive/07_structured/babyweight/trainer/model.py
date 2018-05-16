@@ -35,7 +35,7 @@ LABEL_COLUMN = 'weight_pounds'
 KEY_COLUMN = 'key'
 
 # Set default values for each CSV column
-DEFAULTS = [[0.0], ['null'], [0.0], ['null'], [0.0], ['nokey']]
+DEFAULTS = [[0.0], ['null'], [0.0], ['null'], ['null'], [0.0], ['null'], ['null'], ['nokey']]
 
 # Define some hyperparameters
 TRAIN_STEPS = 10000
@@ -78,7 +78,7 @@ def read_dataset(prefix, mode, batch_size):
 def get_wide_deep():
     # Define column types
     is_male,mother_age,plurality,cigarette_use,alcohol_use,mother_race,gestation_weeks = \
-        [\
+        [
             tf.feature_column.categorical_column_with_vocabulary_list('is_male',
                         ['True', 'False', 'Unknown']),
             tf.feature_column.numeric_column('mother_age'),
