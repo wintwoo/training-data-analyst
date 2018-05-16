@@ -27,7 +27,7 @@ tf.logging.set_verbosity(tf.logging.INFO)
 BUCKET = None  # set from task.py
 PATTERN = 'of' # gets all files
 TRAIN_STEPS = 10000
-CSV_COLUMNS = 'weight_pounds,is_male,mother_age,plurality,gestation_weeks,key'.split(',')
+CSV_COLUMNS = 'weight_pounds,is_male,mother_age,mother_race,plurality,gestation_weeks,alcohol_use,cigarette_use,key'.split(',')
 LABEL_COLUMN = 'weight_pounds'
 KEY_COLUMN = 'key'
 DEFAULTS = [[0.0], ['null'], [0.0], ['null'], [0.0], ['nokey']]
@@ -41,20 +41,20 @@ def read_dataset(prefix, pattern, batch_size=512):
     else:
         mode = tf.estimator.ModeKeys.EVAL
         num_epochs = 1 # end-of-input after this
-    
+
     # the actual input function passed to TensorFlow
     def _input_fn():
         # could be a path to one file or a file pattern.
         input_file_names = tf.train.match_filenames_once(filename)
         filename_queue = tf.train.string_input_producer(
             input_file_names, shuffle=True, num_epochs=num_epochs)
- 
+
         # read CSV
         reader = tf.TextLineReader()
         _, value = reader.read_up_to(filename_queue, num_records=batch_size)
         if mode == tf.estimator.ModeKeys.TRAIN:
-          value = tf.train.shuffle_batch([value], batch_size, capacity=10*batch_size, 
-                                         min_after_dequeue=batch_size, enqueue_many=True, 
+          value = tf.train.shuffle_batch([value], batch_size, capacity=10*batch_size,
+                                         min_after_dequeue=batch_size, enqueue_many=True,
                                          allow_smaller_final_batch=False)
         value_column = tf.expand_dims(value, -1)
         columns = tf.decode_csv(value_column, record_defaults=DEFAULTS)
@@ -62,38 +62,49 @@ def read_dataset(prefix, pattern, batch_size=512):
         features.pop(KEY_COLUMN)
         label = features.pop(LABEL_COLUMN)
         return features, label
-  
+
     return _input_fn
 
 def get_wide_deep():
     # define column types
-    is_male,mother_age,plurality,gestation_weeks = \
+    is_male,mother_age,plurality,cigarette_use,alcohol_use,mother_race,gestation_weeks = \
         [\
-            tf.feature_column.categorical_column_with_vocabulary_list('is_male', 
+            tf.feature_column.categorical_column_with_vocabulary_list('is_male',
                         ['True', 'False', 'Unknown']),
             tf.feature_column.numeric_column('mother_age'),
             tf.feature_column.categorical_column_with_vocabulary_list('plurality',
                         ['Single(1)', 'Twins(2)', 'Triplets(3)',
                          'Quadruplets(4)', 'Quintuplets(5)','Multiple(2+)']),
+            tf.feature_column.categorical_column_with_vocabulary_list('cigarette_use',
+                        ['True', 'False', 'Unknown']),
+            tf.feature_column.categorical_column_with_vocabulary_list('alcohol_use',
+                        ['True', 'False', 'Unknown']),
+            tf.feature_column.categorical_column_with_vocabulary_list('mother_race',
+                        ['MR-1', 'MR-2', 'MR-3', 'MR-4', 'MR-5', 'MR-6',
+                         'MR-7', 'MR-9', 'MR-18', 'MR-28', 'MR-38', 'MR-48',
+                         'MR-58', 'MR-68', 'MR-78']),
             tf.feature_column.numeric_column('gestation_weeks')
         ]
 
     # discretize
-    age_buckets = tf.feature_column.bucketized_column(mother_age, 
+    age_buckets = tf.feature_column.bucketized_column(mother_age,
                         boundaries=np.arange(15,45,1).tolist())
-    gestation_buckets = tf.feature_column.bucketized_column(gestation_weeks, 
+    gestation_buckets = tf.feature_column.bucketized_column(gestation_weeks,
                         boundaries=np.arange(17,47,1).tolist())
-      
-    # sparse columns are wide 
+
+    # sparse columns are wide
     wide = [is_male,
             plurality,
+            cigarette_use,
+            alcohol_use,
+            mother_race,
             age_buckets,
             gestation_buckets]
-    
+
     # feature cross all the wide columns and embed into a lower dimension
     crossed = tf.feature_column.crossed_column(wide, hash_bucket_size=20000)
     embed = tf.feature_column.embedding_column(crossed, 3)
-    
+
     # continuous columns are deep
     deep = [mother_age,
             gestation_weeks,
@@ -104,7 +115,10 @@ def serving_input_fn():
     feature_placeholders = {
         'is_male': tf.placeholder(tf.string, [None]),
         'mother_age': tf.placeholder(tf.float32, [None]),
+        'mother_race': tf.placeholder(tf.string, [None]),
         'plurality': tf.placeholder(tf.string, [None]),
+        'alcohol_use': tf.placeholder(tf.string, [None]),
+        'cigarette_use': tf.placeholder(tf.string, [None]),
         'gestation_weeks': tf.placeholder(tf.float32, [None])
     }
     features = {
@@ -150,4 +164,3 @@ def train_and_evaluate(output_dir):
                          steps=None,
                          exporters=exporter)
     tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
-

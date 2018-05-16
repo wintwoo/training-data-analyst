@@ -74,7 +74,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--eval_steps',
         help = 'Positive number of steps for which to evaluate model. Default to None, which means to evaluate until input_fn raises an end-of-input exception',
-        type = int,       
+        type = int,
         default = None
     )
 
@@ -89,7 +89,7 @@ if __name__ == '__main__':
     model.BUCKET     = arguments.pop('bucket')
     model.BATCH_SIZE = arguments.pop('batch_size')
     model.TRAIN_STEPS = (arguments.pop('train_examples') * 1000) / model.BATCH_SIZE
-    model.EVAL_STEPS = arguments.pop('eval_steps')    
+    model.EVAL_STEPS = arguments.pop('eval_steps')
     print ("Will train for {} steps using batch_size={}".format(model.TRAIN_STEPS, model.BATCH_SIZE))
     model.PATTERN = arguments.pop('pattern')
     model.NEMBEDS= arguments.pop('nembeds')

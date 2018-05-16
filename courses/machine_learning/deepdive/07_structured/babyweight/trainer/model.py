@@ -30,7 +30,7 @@ BUCKET = None  # set from task.py
 PATTERN = 'of' # gets all files
 
 # Determine CSV, label, and key columns
-CSV_COLUMNS = 'weight_pounds,is_male,mother_age,plurality,gestation_weeks,key'.split(',')
+CSV_COLUMNS = 'weight_pounds,is_male,mother_age,mother_race,plurality,gestation_weeks,alcohol_use,cigarette_use,key'.split(',')
 LABEL_COLUMN = 'weight_pounds'
 KEY_COLUMN = 'key'
 
@@ -77,7 +77,7 @@ def read_dataset(prefix, mode, batch_size):
 # Define feature columns
 def get_wide_deep():
     # Define column types
-    is_male,mother_age,plurality,gestation_weeks = \
+    is_male,mother_age,plurality,cigarette_use,alcohol_use,mother_race,gestation_weeks = \
         [\
             tf.feature_column.categorical_column_with_vocabulary_list('is_male',
                         ['True', 'False', 'Unknown']),
@@ -85,6 +85,14 @@ def get_wide_deep():
             tf.feature_column.categorical_column_with_vocabulary_list('plurality',
                         ['Single(1)', 'Twins(2)', 'Triplets(3)',
                          'Quadruplets(4)', 'Quintuplets(5)','Multiple(2+)']),
+            tf.feature_column.categorical_column_with_vocabulary_list('cigarette_use',
+                        ['True', 'False', 'Unknown']),
+            tf.feature_column.categorical_column_with_vocabulary_list('alcohol_use',
+                        ['True', 'False', 'Unknown']),
+            tf.feature_column.categorical_column_with_vocabulary_list('mother_race',
+                        ['MR-1', 'MR-2', 'MR-3', 'MR-4', 'MR-5', 'MR-6',
+                         'MR-7', 'MR-9', 'MR-18', 'MR-28', 'MR-38', 'MR-48',
+                         'MR-58', 'MR-68', 'MR-78']),
             tf.feature_column.numeric_column('gestation_weeks')
         ]
 
@@ -97,6 +105,9 @@ def get_wide_deep():
     # Sparse columns are wide, have a linear relationship with the output
     wide = [is_male,
             plurality,
+            cigarette_use,
+            alcohol_use,
+            mother_race,
             age_buckets,
             gestation_buckets]
 
@@ -115,9 +126,11 @@ def serving_input_fn():
     feature_placeholders = {
         'is_male': tf.placeholder(tf.string, [None]),
         'mother_age': tf.placeholder(tf.float32, [None]),
+        'mother_race': tf.placeholder(tf.string, [None]),
         'plurality': tf.placeholder(tf.string, [None]),
-        'gestation_weeks': tf.placeholder(tf.float32, [None]),
-        KEY_COLUMN: tf.placeholder_with_default(tf.constant(['nokey']), [None])
+        'alcohol_use': tf.placeholder(tf.string, [None]),
+        'cigarette_use': tf.placeholder(tf.string, [None]),
+        'gestation_weeks': tf.placeholder(tf.float32, [None])
     }
     features = {
         key: tf.expand_dims(tensor, -1)
