@@ -130,7 +130,8 @@ def serving_input_fn():
         'plurality': tf.placeholder(tf.string, [None]),
         'alcohol_use': tf.placeholder(tf.string, [None]),
         'cigarette_use': tf.placeholder(tf.string, [None]),
-        'gestation_weeks': tf.placeholder(tf.float32, [None])
+        'gestation_weeks': tf.placeholder(tf.float32, [None]),
+        KEY_COLUMN: tf.placeholder_with_default(tf.constant(['nokey']), [None])
     }
     features = {
         key: tf.expand_dims(tensor, -1)
